@@ -1,3 +1,5 @@
 # Ignore input & output folders
 /input
 /output
+.idea
+.DS_STORE
