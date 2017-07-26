@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Jul 17 20:03:13 2017
-
-@author: apaterakis
-"""
+"""This is the main file used in our tensorflow project"""
 
 from __future__ import print_function
+
+__author__ = "Antonis Paterakis, Dimosthenis Schizas"
 
 import os
 import random
@@ -103,14 +101,14 @@ def conv_net(x, weights, biases, dropout):
     conv1 = conv2d(x, weights['wc1'], biases['bc1'])
     # Max Pooling (down-sampling)
     conv1 = maxpool2d(conv1, k=2)
-    print(conv1.get_shape())
+    # print(conv1.get_shape())
     #
     # Convolution Layer
-    #conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
+    # conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
     # Max Pooling (down-sampling)
-    #conv2 = maxpool2d(conv2, k=2)
+    # conv2 = maxpool2d(conv2, k=2)
     # print(conv2.get_shape())
-    #conv3 = conv2d(conv2, weights['wc3'], biases['bc3'])
+    # conv3 = conv2d(conv2, weights['wc3'], biases['bc3'])
     # print(conv3.get_shape())
     #
     # Fully connected layer
@@ -171,7 +169,7 @@ with tf.Session() as sess:
     sess.run(init)
     step = 1
     # Keep training until reach max iterations
-    while step < 11:
+    while step < 101:
         batch_size = KEY_PARAMETERS["batch_size"]
         dropout = KEY_PARAMETERS["dropout"]
         images, classes = get_images(batch_size, "train")
@@ -182,7 +180,7 @@ with tf.Session() as sess:
             y: train_batch_y,
             keep_prob: dropout
         })
-        if step % 2 == 0:
+        if step % 5 == 0:
             # Calculate batch loss and accuracy
             loss, acc = sess.run([cost, accuracy], feed_dict={
                 x: train_batch_x,
