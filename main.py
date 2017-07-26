@@ -21,6 +21,8 @@ KEY_PARAMETERS = {
     "n_input": 259*194*3,  # data input (img shape)
     "n_classes": 2,  # total classes (0-1: uncensored - censored)
     "dropout": 0.75,  # Dropout, probability to keep units
+    "censored_ratio": 0.4,
+    "test_train_ratio": 0.2,
 }
 
 
@@ -31,21 +33,52 @@ keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
 
 
 # IMPORT images
-# TODO: discard bad images
-def get_images(batch_size=10, folder="train"):
+def split_dataset(ratio):
+    test_images = dict()
+    train_images = dict()
+    censored_files = os.listdir(
+        os.path.join(os.getcwd(), "input", "censored")
+    )
+    uncensored_files = os.listdir(
+        os.path.join(os.getcwd(), "input", "uncensored")
+    )
+
+    test_images["censored"] = random.sample(
+        censored_files, round(len(censored_files)*ratio)
+    )
+    train_images["censored"] = list(set(censored_files).difference(
+        set(test_images["censored"])
+    ))
+    test_images["uncensored"] = random.sample(
+        uncensored_files, round(len(uncensored_files)*ratio)
+    )
+    train_images["uncensored"] = list(set(uncensored_files).difference(
+        set(test_images["uncensored"])
+    ))
+
+    return train_images, test_images
+
+
+def get_images(images_dict, batch_size=None):
     images = []
     images_labels = []
 
-    path_censored = os.path.join(os.getcwd(), "input", folder, "censored")
-    path_uncensored = os.path.join(os.getcwd(), "input", folder, "uncensored")
+    path_censored = os.path.join(os.getcwd(), "input", "censored")
+    path_uncensored = os.path.join(os.getcwd(), "input", "uncensored")
 
-    uncensored = round(batch_size*0.8)
-    censored = batch_size - uncensored
-    for image in random.sample(os.listdir(path_uncensored), uncensored):
+    censored_ratio = KEY_PARAMETERS["censored_ratio"]
+    try:
+        censored_size = round(batch_size*censored_ratio)
+        uncensored_size = batch_size - censored_size
+    except:
+        censored_size = len(images_dict["censored"])
+        uncensored_size = len(images_dict["uncensored"])
+
+    for image in random.sample(images_dict["uncensored"], uncensored_size):
         im = Image.open(os.path.join(path_uncensored, image))
         images.append(fix_image(im))
         images_labels.append([0, 1])
-    for image in random.sample(os.listdir(path_censored), censored):
+    for image in random.sample(images_dict["censored"], censored_size):
         im = Image.open(os.path.join(path_censored, image))
         images.append(fix_image(im))
         images_labels.append([1, 0])
@@ -126,7 +159,7 @@ def conv_net(x, weights, biases, dropout):
 
 # Store layers weight & bias
 weights = {
-    # 7x2 conv, 3 input, 32 outputs
+    # 2x7 conv, 3 input, 32 outputs
     'wc1': tf.Variable(tf.random_normal([2, 7, 3, 32])),
     # 5x5 conv, 32 inputs, 64 outputs
     'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
@@ -167,12 +200,17 @@ init = tf.global_variables_initializer()
 # Launch the graph
 with tf.Session() as sess:
     sess.run(init)
+    print("Session started")
     step = 1
-    # Keep training until reach max iterations
-    while step < 101:
-        batch_size = KEY_PARAMETERS["batch_size"]
-        dropout = KEY_PARAMETERS["dropout"]
-        images, classes = get_images(batch_size, "train")
+    # Split dataset into train and test
+    test_train_ratio = KEY_PARAMETERS["test_train_ratio"]
+    batch_size = KEY_PARAMETERS["batch_size"]
+    dropout = KEY_PARAMETERS["dropout"]
+    train_images_dict, test_images_dict = split_dataset(test_train_ratio)
+    max_iter = len(train_images_dict["censored"]) + len(train_images_dict["uncensored"])
+    print("Maximum Iteration: " + str(max_iter))
+    while step * batch_size < max_iter:
+        images, classes = get_images(train_images_dict, batch_size)
         train_batch_x, train_batch_y = get_batch(images, classes)
         # Run optimization op (backprop
         sess.run(optimizer, feed_dict={
@@ -180,7 +218,7 @@ with tf.Session() as sess:
             y: train_batch_y,
             keep_prob: dropout
         })
-        if step % 5 == 0:
+        if step % batch_size == 0:
             # Calculate batch loss and accuracy
             loss, acc = sess.run([cost, accuracy], feed_dict={
                 x: train_batch_x,
@@ -188,7 +226,7 @@ with tf.Session() as sess:
                 keep_prob: dropout
             })
             # Calculate accuracy for 256 mnist test images
-            test_images, test_y = get_images(20, "test")
+            test_images, test_y = get_images(test_images_dict)
             test_batch_x, test_batch_y = get_batch(test_images, test_y)
             t_acc = sess.run(accuracy, feed_dict={
                 x: test_batch_x,
