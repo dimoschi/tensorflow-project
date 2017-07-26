@@ -1,5 +1,6 @@
 # Ignore input & output folders
 /input
 /output
+/other_files
 .idea
 .DS_STORE
