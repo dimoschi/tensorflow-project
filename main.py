@@ -259,8 +259,8 @@ with tf.Session() as sess:
         })
         end_time = datetime.datetime.now()
         dt = end_time - start_time
-        print("Epoch {} run for {} seconds".format(
-            str(epoch+1), dt.seconds
+        print("Epoch {} run for {} minutes & {} seconds".format(
+            str(epoch+1), dt.seconds // 60, dt.seconds % 60
         ))
         print(
             "Epoch: " + str(epoch+1) +
