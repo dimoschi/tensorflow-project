@@ -17,8 +17,9 @@ KEY_PARAMETERS = {
     "learning_rate": 0.001,
     "batch_size": 12,
     "display_step": 1,
-    "required_size": (220, 220),  # tuple of required size
-    "size": 220,  # data input (img shape)
+    "required_size": (64*2, 48*2),  # tuple of required size
+    "height": 48*2,
+    "width": 64*2,  # data input (img shape)
     "n_classes": 2,  # total classes (0-1: uncensored - censored)
     "dropout": 0.75,  # Dropout, probability to keep units
     "censored_ratio": 0.4,
@@ -29,7 +30,7 @@ KEY_PARAMETERS = {
 
 # tf Graph input
 x = tf.placeholder(
-    tf.float32, shape=[None, KEY_PARAMETERS["size"], KEY_PARAMETERS["size"], 3]
+    tf.float32, shape=[None, KEY_PARAMETERS["height"], KEY_PARAMETERS["width"], 3]
 )
 y = tf.placeholder(tf.float32, shape=[None, KEY_PARAMETERS["n_classes"]])
 keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
@@ -151,7 +152,7 @@ def conv_net(x, weights, biases, dropout):
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
     # fc1 = tf.reshape(conv1, [-1, weights['wd1'].get_shape().as_list()[0]])
-    fc1 = tf.reshape(conv1, [-1, 193600*2])
+    fc1 = tf.reshape(conv1, [-1, 24*32*64*2])
     fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
     fc1 = tf.nn.relu(fc1)
     # Apply Dropout
@@ -164,21 +165,21 @@ def conv_net(x, weights, biases, dropout):
 # Store layers weight & bias
 weights = {
     # 5x5 conv, 3 input, 32 outputs
-    'wc1': tf.Variable(tf.random_normal([10, 10, 3, 32])),
+    'wc1': tf.Variable(tf.random_normal([6, 8, 3, 32])),
     # 5x5 conv, 32 inputs, 64 outputs
-    'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
+    'wc2': tf.Variable(tf.random_normal([3, 4, 32, 64])),
     'wc3': tf.Variable(tf.random_normal([3, 3, 64, 32])),
     # fully connected, 7*7*64 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([193600*2, 1024])),
+    'wd1': tf.Variable(tf.random_normal([24*32*64*2, 2048])),
     # 1024 inputs, 2 outputs (class prediction)
-    'out': tf.Variable(tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]))
+    'out': tf.Variable(tf.random_normal([2048, KEY_PARAMETERS["n_classes"]]))
 }
 
 biases = {
     'bc1': tf.Variable(tf.random_normal([32])),
     'bc2': tf.Variable(tf.random_normal([64])),
     'bc3': tf.Variable(tf.random_normal([32])),
-    'bd1': tf.Variable(tf.random_normal([1024])),
+    'bd1': tf.Variable(tf.random_normal([2048])),
     'out': tf.Variable(tf.random_normal([KEY_PARAMETERS["n_classes"]]))
 }
 
