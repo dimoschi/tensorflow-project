@@ -17,20 +17,21 @@ KEY_PARAMETERS = {
     "learning_rate": 0.001,
     "batch_size": 12,
     "display_step": 1,
-    "required_size": (64*2, 48*2),  # tuple of required size
-    "height": 48*2,
-    "width": 64*2,  # data input (img shape)
+    "required_size": (128, 96),  # tuple of required size
+    "height": 96,
+    "width": 128,  # data input (img shape)
     "n_classes": 2,  # total classes (0-1: uncensored - censored)
     "dropout": 0.75,  # Dropout, probability to keep units
     "censored_ratio": 0.4,
     "test_train_ratio": 0.2,
-    "training_epochs": 5,
+    "training_epochs": 10,
 }
 
 
 # tf Graph input
 x = tf.placeholder(
-    tf.float32, shape=[None, KEY_PARAMETERS["height"], KEY_PARAMETERS["width"], 3]
+    tf.float32,
+    shape=[None, KEY_PARAMETERS["height"], KEY_PARAMETERS["width"], 3]
 )
 y = tf.placeholder(tf.float32, shape=[None, KEY_PARAMETERS["n_classes"]])
 keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
@@ -165,7 +166,7 @@ def conv_net(x, weights, biases, dropout):
 # Store layers weight & bias
 weights = {
     # 5x5 conv, 3 input, 32 outputs
-    'wc1': tf.Variable(tf.random_normal([6, 8, 3, 32])),
+    'wc1': tf.Variable(tf.random_normal([12, 16, 3, 32])),
     # 5x5 conv, 32 inputs, 64 outputs
     'wc2': tf.Variable(tf.random_normal([3, 4, 32, 64])),
     'wc3': tf.Variable(tf.random_normal([3, 3, 64, 32])),
@@ -219,7 +220,10 @@ with tf.Session() as sess:
         avg_acc = 0.
         # Split dataset into train and test for current epoch
         train_images_dict, test_images_dict = split_dataset(test_train_ratio)
-        max_iter = len(train_images_dict["censored"]) + len(train_images_dict["uncensored"])
+        max_iter = (
+            len(train_images_dict["censored"]) +
+            len(train_images_dict["uncensored"])
+        )
         total_batches = int(max_iter/batch_size)
         while step * batch_size <= max_iter:
             images, classes = get_images(train_images_dict, batch_size)
