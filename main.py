@@ -133,17 +133,17 @@ def maxpool2d(x, k=2):
 def conv_net(x, weights, biases, dropout):
     # Reshape input picture
     # x = tf.reshape(x, shape=[-1, 220, 220, 3])
-    # Convolution Layer
+    # Convolution Layer #1
     conv1 = conv2d(x, weights['wc1'], biases['bc1'])
     tf.logging.debug(conv1.get_shape())
     # Max Pooling (down-sampling)
     conv1 = maxpool2d(conv1, k=2)
     # print(conv1.get_shape())
     #
-    # Convolution Layer
-    # conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
+    # Convolution Layer #2
+    conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
     # Max Pooling (down-sampling)
-    # conv2 = maxpool2d(conv2, k=2)
+    conv2 = maxpool2d(conv2, k=2)
     # print(conv2.get_shape())
     # conv3 = conv2d(conv2, weights['wc3'], biases['bc3'])
     # print(conv3.get_shape())
@@ -151,7 +151,7 @@ def conv_net(x, weights, biases, dropout):
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
     # fc1 = tf.reshape(conv1, [-1, weights['wd1'].get_shape().as_list()[0]])
-    fc1 = tf.reshape(conv1, [-1, 387200])
+    fc1 = tf.reshape(conv1, [-1, 193600*2])
     fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
     fc1 = tf.nn.relu(fc1)
     # Apply Dropout
@@ -169,8 +169,8 @@ weights = {
     'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
     'wc3': tf.Variable(tf.random_normal([3, 3, 64, 32])),
     # fully connected, 7*7*64 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([387200, 1024])),
-    # 1024 inputs, 10 outputs (class prediction)
+    'wd1': tf.Variable(tf.random_normal([193600*2, 1024])),
+    # 1024 inputs, 2 outputs (class prediction)
     'out': tf.Variable(tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]))
 }
 
