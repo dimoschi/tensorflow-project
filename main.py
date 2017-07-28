@@ -253,7 +253,7 @@ with tf.Session() as sess:
             keep_prob: 1.
         })
         end_time = datetime.datetime.now()
-        dt = start_time - end_time
+        dt = end_time - start_time
         print("Epoch {} run for {} seconds".format(
             str(epoch+1), dt.seconds
         ))
