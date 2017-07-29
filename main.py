@@ -7,6 +7,7 @@ __author__ = "Antonis Paterakis, Dimosthenis Schizas"
 
 import os
 import random
+import datetime
 import numpy as np
 import tensorflow as tf
 from PIL import Image
@@ -14,20 +15,24 @@ from PIL import Image
 # Parameters
 KEY_PARAMETERS = {
     "learning_rate": 0.001,
-    "training_iters": 100,
-    "batch_size": 6,
+    "batch_size": 12,
     "display_step": 1,
-    "required_size": (259, 194),  # tuple of required size
-    "n_input": 259*194*3,  # data input (img shape)
+    "required_size": (128, 96),  # tuple of required size
+    "height": 96,
+    "width": 128,  # data input (img shape)
     "n_classes": 2,  # total classes (0-1: uncensored - censored)
     "dropout": 0.75,  # Dropout, probability to keep units
     "censored_ratio": 0.4,
     "test_train_ratio": 0.2,
+    "training_epochs": 10,
 }
 
 
 # tf Graph input
-x = tf.placeholder(tf.float32, shape=[None, KEY_PARAMETERS["n_input"]])
+x = tf.placeholder(
+    tf.float32,
+    shape=[None, KEY_PARAMETERS["height"], KEY_PARAMETERS["width"], 3]
+)
 y = tf.placeholder(tf.float32, shape=[None, KEY_PARAMETERS["n_classes"]])
 keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
 
@@ -106,7 +111,7 @@ def fix_image(image):
 
 def get_batch(images, y):
     batch_x = np.asarray([np.asarray(
-        image, dtype=np.float32).flatten() for image in images])
+        image, dtype=np.float32) for image in images])
     batch_y = np.asarray(y)
     return batch_x, batch_y
 
@@ -129,25 +134,23 @@ def maxpool2d(x, k=2):
 # Create model
 def conv_net(x, weights, biases, dropout):
     # Reshape input picture
-    x = tf.reshape(x, shape=[-1, 194, 259, 3])
-    # Convolution Layer
+    # x = tf.reshape(x, shape=[-1, 220, 220, 3])
+    # Convolution Layer #1
     conv1 = conv2d(x, weights['wc1'], biases['bc1'])
     # Max Pooling (down-sampling)
     conv1 = maxpool2d(conv1, k=2)
     # print(conv1.get_shape())
-    #
-    # Convolution Layer
-    # conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
+    # Convolution Layer #2
+    conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
     # Max Pooling (down-sampling)
-    # conv2 = maxpool2d(conv2, k=2)
+    conv2 = maxpool2d(conv2, k=2)
     # print(conv2.get_shape())
     # conv3 = conv2d(conv2, weights['wc3'], biases['bc3'])
     # print(conv3.get_shape())
     #
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
-    # fc1 = tf.reshape(conv1, [-1, weights['wd1'].get_shape().as_list()[0]])
-    fc1 = tf.reshape(conv1, [-1, 403520])
+    fc1 = tf.reshape(conv2, [-1, 24*32*64])
     fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
     fc1 = tf.nn.relu(fc1)
     # Apply Dropout
@@ -159,14 +162,14 @@ def conv_net(x, weights, biases, dropout):
 
 # Store layers weight & bias
 weights = {
-    # 2x7 conv, 3 input, 32 outputs
-    'wc1': tf.Variable(tf.random_normal([2, 7, 3, 32])),
-    # 5x5 conv, 32 inputs, 64 outputs
-    'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
+    # 12x16 conv, 3 input, 32 outputs
+    'wc1': tf.Variable(tf.random_normal([12, 16, 3, 32])),
+    # 3x4 conv, 32 inputs, 64 outputs
+    'wc2': tf.Variable(tf.random_normal([3, 4, 32, 64])),
     'wc3': tf.Variable(tf.random_normal([3, 3, 64, 32])),
-    # fully connected, 7*7*64 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([403520, 1024])),
-    # 1024 inputs, 10 outputs (class prediction)
+    # fully connected, 24*32*64 inputs, 1024 outputs
+    'wd1': tf.Variable(tf.random_normal([24*32*64, 1024])),
+    # 1024 inputs, 2 outputs (class prediction)
     'out': tf.Variable(tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]))
 }
 
@@ -199,45 +202,67 @@ init = tf.global_variables_initializer()
 
 # Launch the graph
 with tf.Session() as sess:
+    tf.logging.set_verbosity(tf.logging.DEBUG)
     sess.run(init)
     print("Session started")
-    step = 1
-    # Split dataset into train and test
+    training_epochs = KEY_PARAMETERS["training_epochs"]
     test_train_ratio = KEY_PARAMETERS["test_train_ratio"]
     batch_size = KEY_PARAMETERS["batch_size"]
     dropout = KEY_PARAMETERS["dropout"]
-    train_images_dict, test_images_dict = split_dataset(test_train_ratio)
-    max_iter = len(train_images_dict["censored"]) + len(train_images_dict["uncensored"])
-    print("Maximum Iteration: " + str(max_iter))
-    while step * batch_size < max_iter:
-        images, classes = get_images(train_images_dict, batch_size)
-        train_batch_x, train_batch_y = get_batch(images, classes)
-        # Run optimization op (backprop
-        sess.run(optimizer, feed_dict={
-            x: train_batch_x,
-            y: train_batch_y,
-            keep_prob: dropout
-        })
-        if step % batch_size == 0:
+    for epoch in range(training_epochs):
+        print("Epoch {} started".format(str(epoch+1)))
+        start_time = datetime.datetime.now()
+        step = 1
+        avg_cost = 0.
+        avg_acc = 0.
+        # Split dataset into train and test for current epoch
+        train_images_dict, test_images_dict = split_dataset(test_train_ratio)
+        max_iter = (
+            len(train_images_dict["censored"]) +
+            len(train_images_dict["uncensored"])
+        )
+        total_batches = int(max_iter/batch_size)
+        while step * batch_size <= max_iter:
+            images, classes = get_images(train_images_dict, batch_size)
+            train_batch_x, train_batch_y = get_batch(images, classes)
+            # Run optimization op (backprop
+            sess.run(optimizer, feed_dict={
+                x: train_batch_x,
+                y: train_batch_y,
+                keep_prob: dropout
+            })
             # Calculate batch loss and accuracy
             loss, acc = sess.run([cost, accuracy], feed_dict={
                 x: train_batch_x,
                 y: train_batch_y,
                 keep_prob: dropout
             })
-            # Calculate accuracy for 256 mnist test images
-            test_images, test_y = get_images(test_images_dict)
-            test_batch_x, test_batch_y = get_batch(test_images, test_y)
-            t_acc = sess.run(accuracy, feed_dict={
-                x: test_batch_x,
-                y: test_batch_y,
-                keep_prob: 1.
-            })
-            print(
-                "Iter " + str(step) +
-                ", Minibatch Loss= " + "{:.6f}".format(loss) +
-                ", Training Accuracy= " + "{:.5f}".format(acc) +
-                ", Testing Accuracy= " + "{:.5f}".format(t_acc)
-            )
-        step += 1
+            avg_cost += loss / total_batches
+            avg_acc += acc / total_batches
+            if step % 6 == 0:
+                print(
+                    "Step: " + str(step) +
+                    ", Average Cost: " + "{:.6f}".format(avg_cost) +
+                    ", Average Training Accuracy: " + "{:.6f}".format(avg_acc)
+                )
+            step += 1
+        # Calculate accuracy for test images
+        test_images, test_y = get_images(test_images_dict)
+        test_batch_x, test_batch_y = get_batch(test_images, test_y)
+        t_acc = sess.run(accuracy, feed_dict={
+            x: test_batch_x,
+            y: test_batch_y,
+            keep_prob: 1.
+        })
+        end_time = datetime.datetime.now()
+        dt = end_time - start_time
+        print("Epoch {} run for {} minutes & {} seconds".format(
+            str(epoch+1), dt.seconds // 60, dt.seconds % 60
+        ))
+        print(
+            "Epoch: " + str(epoch+1) +
+            ", Average Cost: " + "{:.6f}".format(avg_cost) +
+            ", Training Accuracy: " + "{:.5f}".format(avg_acc) +
+            ", Testing Accuracy: " + "{:.5f}".format(t_acc)
+        )
     print("Optimization Finished!")
