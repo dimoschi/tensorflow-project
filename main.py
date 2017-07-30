@@ -261,17 +261,16 @@ with tf.Session() as sess:
         dt = end_time - start_time
         
 
-        #check if accuracy is better than best_accuracy
+        #if accuracy is better than best_accuracy update best_model and accuracy
         if (t_acc > best_accuracy):
             save_time = datetime.datetime.now()
-            #if it is, update best_model and best_accuracy
-            saver.save(sess,os.path.join(os.getcwd(), "Models",'BestModel_testaros01' + 
-                                         str(t_acc)),)
+            saver.save(sess,os.path.join(os.getcwd(), "Models",'BestModel_testaros01'))
             best_accuracy = t_acc
             save_time = datetime.datetime.now() - save_time
             print('Best Model Updated. (accu:' + str(t_acc) + ' - ' + str(save_time) + 's)')
+        else:
+            print('Best Model NOT Updated. (best accu:' + str(best_accuracy) + ')')
             
-        
         #saving completed.
         
 
