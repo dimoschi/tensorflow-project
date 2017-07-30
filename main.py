@@ -242,7 +242,7 @@ with tf.Session() as sess:
             })
             avg_cost += loss / total_batches
             avg_acc += acc / total_batches
-            if step % 6 == 0:
+            if step % round(total_batches / 5,0) == 0:
                 print(
                     "Step: " + str(step) +
                     ", Average Cost: " + "{:.6f}".format(avg_cost) +
