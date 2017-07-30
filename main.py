@@ -299,6 +299,11 @@ saver = tf.train.Saver(max_to_keep=1)
 # Initializing the variables
 init = tf.global_variables_initializer()
 
+<<<<<<< HEAD
+=======
+# Saver Class
+saver = tf.train.Saver(max_to_keep=1) #how many checkpoints (last models) it keeps
+>>>>>>> max_to_keep=1 so that only the last checkpoint (model) is kept at disk
 
 # Launch the graph
 with tf.Session() as sess:
