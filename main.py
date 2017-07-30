@@ -24,7 +24,7 @@ KEY_PARAMETERS = {
     "dropout": 0.75,  # Dropout, probability to keep units
     "censored_ratio": 0.4,
     "test_train_ratio": 0.2,
-    "training_epochs": 10,
+    "training_epochs": 2,
 }
 
 
@@ -199,6 +199,8 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 # Initializing the variables
 init = tf.global_variables_initializer()
 
+# Saver Class
+saver = tf.train.Saver()
 
 # Launch the graph
 with tf.Session() as sess:
@@ -209,6 +211,7 @@ with tf.Session() as sess:
     test_train_ratio = KEY_PARAMETERS["test_train_ratio"]
     batch_size = KEY_PARAMETERS["batch_size"]
     dropout = KEY_PARAMETERS["dropout"]
+    best_accuracy = 0
     for epoch in range(training_epochs):
         print("Epoch {} started".format(str(epoch+1)))
         start_time = datetime.datetime.now()
@@ -256,6 +259,22 @@ with tf.Session() as sess:
         })
         end_time = datetime.datetime.now()
         dt = end_time - start_time
+        
+
+        #check if accuracy is better than best_accuracy
+        if (t_acc > best_accuracy):
+            save_time = datetime.datetime.now()
+            #if it is, update best_model and best_accuracy
+            saver.save(sess,os.path.join(os.getcwd(), "Models",'BestModel_testaros01' + 
+                                         str(t_acc)),)
+            best_accuracy = t_acc
+            save_time = datetime.datetime.now() - save_time
+            print('Best Model Updated. (accu:' + str(t_acc) + ' - ' + str(save_time) + 's)')
+            
+        
+        #saving completed.
+        
+
         print("Epoch {} run for {} minutes & {} seconds".format(
             str(epoch+1), dt.seconds // 60, dt.seconds % 60
         ))

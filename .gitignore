@@ -4,3 +4,5 @@
 /other_files
 .idea
 .DS_STORE
+#ignore Saved Models folder
+/Models
