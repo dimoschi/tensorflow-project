@@ -296,6 +296,11 @@ tf.summary.scalar('accuracy', accuracy)
 saver = tf.train.Saver(max_to_keep=1)
 
 
+# Confusion matrix
+confusion = tf.confusion_matrix(
+                                labels=tf.argmax(y,1),
+                                predictions=tf.argmax(pred,1))
+
 # Initializing the variables
 init = tf.global_variables_initializer()
 
