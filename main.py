@@ -24,7 +24,7 @@ KEY_PARAMETERS = {
     "dropout": 0.75,  # Dropout, probability to keep units
     "censored_ratio": 0.4,
     "test_train_ratio": 0.2,
-    "training_epochs": 2,
+    "training_epochs": 10,
 }
 
 
@@ -242,7 +242,7 @@ with tf.Session() as sess:
             })
             avg_cost += loss / total_batches
             avg_acc += acc / total_batches
-            if step % round(total_batches / 5,0) == 0:
+            if step % total_batches // 5 == 0:
                 print(
                     "Step: " + str(step) +
                     ", Average Cost: " + "{:.6f}".format(avg_cost) +
@@ -259,20 +259,28 @@ with tf.Session() as sess:
         })
         end_time = datetime.datetime.now()
         dt = end_time - start_time
-        
 
-        #if accuracy is better than best_accuracy update best_model and accuracy
+        # if accuracy is better than best_accuracy
+        # update best_model and accuracy
         if (t_acc > best_accuracy):
             save_time = datetime.datetime.now()
-            saver.save(sess,os.path.join(os.getcwd(), "Models",'BestModel_testaros01'))
+            saver.save(
+                sess,
+                os.path.join(os.getcwd(), 'Models', 'BestModel_testaros01')
+            )
             best_accuracy = t_acc
             save_time = datetime.datetime.now() - save_time
-            print('Best Model Updated. (accu:' + str(t_acc) + ' - ' + str(save_time) + 's)')
+            print(
+                'Best Model Updated. (accu:' +
+                str(t_acc) + ' - ' + str(save_time) + 's)'
+            )
         else:
-            print('Best Model NOT Updated. (best accu:' + str(best_accuracy) + ')')
-            
-        #saving completed.
-        
+            print(
+                'Best Model NOT Updated. (best accu:' +
+                str(best_accuracy) + ')'
+            )
+
+        # saving completed.
 
         print("Epoch {} run for {} minutes & {} seconds".format(
             str(epoch+1), dt.seconds // 60, dt.seconds % 60
