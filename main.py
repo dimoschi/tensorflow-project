@@ -200,7 +200,7 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 init = tf.global_variables_initializer()
 
 # Saver Class
-saver = tf.train.Saver()
+saver = tf.train.Saver(max_to_keep=1)
 
 # Launch the graph
 with tf.Session() as sess:
@@ -244,7 +244,7 @@ with tf.Session() as sess:
             avg_cost += loss / total_batches
             avg_acc += acc / total_batches
             # Print every 20 steps
-            if step % 20 == 0:
+            if (step % 20 == 0) or (step % total_batches == 0):
                 print(
                     "Step: " + str(step) +
                     ", Average Cost: " + "{:.6f}".format(avg_cost) +
@@ -268,7 +268,7 @@ with tf.Session() as sess:
             save_time = datetime.datetime.now()
             saver.save(
                 sess,
-                os.path.join(os.getcwd(), 'Models', 'BestModel_testaros01')
+                os.path.join(os.getcwd(), 'models', 'best-model')
             )
             best_accuracy = t_acc
             save_time = datetime.datetime.now() - save_time
