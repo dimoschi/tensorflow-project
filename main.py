@@ -200,7 +200,7 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 init = tf.global_variables_initializer()
 
 # Saver Class
-saver = tf.train.Saver(max_to_keep=1)
+# saver = tf.train.Saver(max_to_keep=1)
 
 # Launch the graph
 with tf.Session() as sess:
@@ -265,22 +265,21 @@ with tf.Session() as sess:
         # if accuracy is better than best_accuracy
         # update best_model and accuracy
         if (t_acc > best_accuracy):
-            save_time = datetime.datetime.now()
-            saver.save(
-                sess,
-                os.path.join(os.getcwd(), 'models', 'best-model')
-            )
+            # save_time = datetime.datetime.now()
+            # saver.save(
+            #     sess,
+            #     os.path.join(os.getcwd(), 'models', 'best-model')
+            # )
             best_accuracy = t_acc
-            save_time = datetime.datetime.now() - save_time
+            # save_time = datetime.datetime.now() - save_time
             print(
-                'Best Model Updated. (accu:' +
-                str(t_acc) + ' - ' + str(save_time) + 's)'
+                "Best Model Updated. Accuracy: {}".format(str(t_acc))
             )
         else:
             print(
-                'Best Model NOT Updated. (best accu:' +
-                str(best_accuracy) + ')'
-            )
+                "Best Model NOT Updated. (Best accuracy: {}".format(
+                    str(best_accuracy)
+                ))
 
         # saving completed.
 
