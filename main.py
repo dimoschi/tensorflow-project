@@ -139,7 +139,7 @@ def conv_net(x, weights, biases, dropout):
     conv1 = conv2d(x, weights['wc1'], biases['bc1'])
     # Max Pooling (down-sampling)
     conv1 = maxpool2d(conv1, k=2)
-    # print(conv1.get_shape())
+    print(conv1.get_shape())
     # Convolution Layer #2
     conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
     # Max Pooling (down-sampling)
@@ -150,7 +150,7 @@ def conv_net(x, weights, biases, dropout):
     #
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
-    fc1 = tf.reshape(conv2, [-1, 24*32*64])
+    fc1 = tf.reshape(conv1, [-1, 48*32*64])
     fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
     fc1 = tf.nn.relu(fc1)
     # Apply Dropout
@@ -168,7 +168,7 @@ weights = {
     'wc2': tf.Variable(tf.random_normal([3, 4, 32, 64])),
     'wc3': tf.Variable(tf.random_normal([3, 3, 64, 32])),
     # fully connected, 24*32*64 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([24*32*64, 1024])),
+    'wd1': tf.Variable(tf.random_normal([48*32*64, 1024])),
     # 1024 inputs, 2 outputs (class prediction)
     'out': tf.Variable(tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]))
 }
@@ -200,7 +200,7 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 init = tf.global_variables_initializer()
 
 # Saver Class
-# saver = tf.train.Saver(max_to_keep=1)
+saver = tf.train.Saver(max_to_keep=1)
 
 # Launch the graph
 with tf.Session() as sess:
@@ -217,16 +217,17 @@ with tf.Session() as sess:
         start_time = datetime.datetime.now()
         step = 1
         avg_cost = 0.
-        avg_acc = 0.
+        avg_train_acc = 0.
+        avg_test_acc = 0.
         # Split dataset into train and test for current epoch
         train_images_dict, test_images_dict = split_dataset(test_train_ratio)
-        max_iter = (
+        train_iter = (
             len(train_images_dict["censored"]) +
             len(train_images_dict["uncensored"])
         )
-        total_batches = int(max_iter/batch_size)
+        total_batches = int(train_iter/batch_size)
         print("Total batches to train: {}".format(total_batches))
-        while step * batch_size <= max_iter:
+        while step * batch_size <= train_iter:
             images, classes = get_images(train_images_dict, batch_size)
             train_batch_x, train_batch_y = get_batch(images, classes)
             # Run optimization op (backprop
@@ -242,38 +243,46 @@ with tf.Session() as sess:
                 keep_prob: dropout
             })
             avg_cost += loss / total_batches
-            avg_acc += acc / total_batches
+            avg_train_acc += acc / total_batches
             # Print every 20 steps
             if (step % 20 == 0) or (step % total_batches == 0):
                 print(
                     "Step: " + str(step) +
                     ", Average Cost: " + "{:.6f}".format(avg_cost) +
-                    ", Average Training Accuracy: " + "{:.6f}".format(avg_acc)
+                    ", Average Training Accuracy: " +
+                    "{:.6f}".format(avg_train_acc)
                 )
             step += 1
-        # Calculate accuracy for test images
-        test_images, test_y = get_images(test_images_dict)
-        test_batch_x, test_batch_y = get_batch(test_images, test_y)
-        t_acc = sess.run(accuracy, feed_dict={
-            x: test_batch_x,
-            y: test_batch_y,
-            keep_prob: 1.
-        })
+        # Calculate accuracy for test images in batches
+        test_iter = (
+            len(test_images_dict["censored"]) +
+            len(test_images_dict["uncensored"])
+        )
+        total_batches = int(test_iter/batch_size)
+        while step * batch_size <= test_iter:
+            test_images, test_y = get_images(test_images_dict)
+            test_batch_x, test_batch_y = get_batch(test_images, test_y)
+            t_acc = sess.run(accuracy, feed_dict={
+                x: test_batch_x,
+                y: test_batch_y,
+                keep_prob: 1.
+            })
+            avg_train_acc += t_acc / total_batches
         end_time = datetime.datetime.now()
         dt = end_time - start_time
 
-        # if accuracy is better than best_accuracy
+        # If accuracy is better than best_accuracy
         # update best_model and accuracy
-        if (t_acc > best_accuracy):
-            # save_time = datetime.datetime.now()
-            # saver.save(
-            #     sess,
-            #     os.path.join(os.getcwd(), 'models', 'best-model')
-            # )
-            best_accuracy = t_acc
-            # save_time = datetime.datetime.now() - save_time
+        if (avg_train_acc > best_accuracy):
+            save_time = datetime.datetime.now()
+            saver.save(
+                sess,
+                os.path.join(os.getcwd(), 'models', 'best-model')
+            )
+            best_accuracy = avg_train_acc
+            save_time = datetime.datetime.now() - save_time
             print(
-                "Best Model Updated. Accuracy: {}".format(str(t_acc))
+                "Best Model Updated. Accuracy: {}".format(str(avg_train_acc))
             )
         else:
             print(
@@ -281,7 +290,7 @@ with tf.Session() as sess:
                     str(best_accuracy)
                 ))
 
-        # saving completed.
+        # Saving completed.
 
         print("Epoch {} run for {} minutes & {} seconds".format(
             str(epoch+1), dt.seconds // 60, dt.seconds % 60
@@ -289,7 +298,7 @@ with tf.Session() as sess:
         print(
             "Epoch: " + str(epoch+1) +
             ", Average Cost: " + "{:.6f}".format(avg_cost) +
-            ", Training Accuracy: " + "{:.5f}".format(avg_acc) +
-            ", Testing Accuracy: " + "{:.5f}".format(t_acc)
+            ", Training Accuracy: " + "{:.5f}".format(avg_train_acc) +
+            ", Testing Accuracy: " + "{:.5f}".format(avg_train_acc)
         )
     print("Optimization Finished!")
