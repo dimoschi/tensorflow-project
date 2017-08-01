@@ -225,6 +225,7 @@ with tf.Session() as sess:
             len(train_images_dict["uncensored"])
         )
         total_batches = int(max_iter/batch_size)
+        print("Total batches to train: {}".format(total_batches))
         while step * batch_size <= max_iter:
             images, classes = get_images(train_images_dict, batch_size)
             train_batch_x, train_batch_y = get_batch(images, classes)
@@ -242,7 +243,8 @@ with tf.Session() as sess:
             })
             avg_cost += loss / total_batches
             avg_acc += acc / total_batches
-            if step % total_batches // 5 == 0:
+            # Print every 20 steps
+            if step % 20 == 0:
                 print(
                     "Step: " + str(step) +
                     ", Average Cost: " + "{:.6f}".format(avg_cost) +
