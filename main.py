@@ -139,7 +139,7 @@ def conv_net(x, weights, biases, dropout):
     conv1 = conv2d(x, weights['wc1'], biases['bc1'])
     # Max Pooling (down-sampling)
     conv1 = maxpool2d(conv1, k=2)
-    print(conv1.get_shape())
+    # print(conv1.get_shape())
     # Convolution Layer #2
     conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
     # Max Pooling (down-sampling)
@@ -258,30 +258,32 @@ with tf.Session() as sess:
             len(test_images_dict["uncensored"])
         )
         total_batches = int(test_iter/batch_size)
-        while step * batch_size <= test_iter:
-            test_images, test_y = get_images(test_images_dict)
+        test_step = 1
+        while test_step * batch_size <= test_iter:
+            test_images, test_y = get_images(test_images_dict, batch_size)
             test_batch_x, test_batch_y = get_batch(test_images, test_y)
             t_acc = sess.run(accuracy, feed_dict={
                 x: test_batch_x,
                 y: test_batch_y,
                 keep_prob: 1.
             })
-            avg_train_acc += t_acc / total_batches
+            avg_test_acc += t_acc / total_batches
+            test_step += 1
         end_time = datetime.datetime.now()
         dt = end_time - start_time
 
         # If accuracy is better than best_accuracy
         # update best_model and accuracy
-        if (avg_train_acc > best_accuracy):
+        if (avg_test_acc > best_accuracy):
             save_time = datetime.datetime.now()
             saver.save(
                 sess,
                 os.path.join(os.getcwd(), 'models', 'best-model')
             )
-            best_accuracy = avg_train_acc
+            best_accuracy = avg_test_acc
             save_time = datetime.datetime.now() - save_time
             print(
-                "Best Model Updated. Accuracy: {}".format(str(avg_train_acc))
+                "Best Model Updated. Accuracy: {}".format(str(avg_test_acc))
             )
         else:
             print(
@@ -298,6 +300,6 @@ with tf.Session() as sess:
             "Epoch: " + str(epoch+1) +
             ", Average Cost: " + "{:.6f}".format(avg_cost) +
             ", Training Accuracy: " + "{:.5f}".format(avg_train_acc) +
-            ", Testing Accuracy: " + "{:.5f}".format(avg_train_acc)
+            ", Testing Accuracy: " + "{:.5f}".format(avg_test_acc)
         )
     print("Optimization Finished!")
