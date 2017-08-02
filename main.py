@@ -145,12 +145,12 @@ def conv_net(x, weights, biases, dropout):
     # Max Pooling (down-sampling)
     conv2 = maxpool2d(conv2, k=2)
     # print(conv2.get_shape())
-    # conv3 = conv2d(conv2, weights['wc3'], biases['bc3'])
+    conv3 = conv2d(conv2, weights['wc3'], biases['bc3'])
     # print(conv3.get_shape())
-    #
+
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
-    fc1 = tf.reshape(conv2, [-1, 24*32*64])
+    fc1 = tf.reshape(conv3, [-1, 24*32*128])
     fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
     fc1 = tf.nn.relu(fc1)
     # Apply Dropout
@@ -166,9 +166,10 @@ weights = {
     'wc1': tf.Variable(tf.random_normal([12, 16, 3, 32])),
     # 3x4 conv, 32 inputs, 64 outputs
     'wc2': tf.Variable(tf.random_normal([3, 4, 32, 64])),
-    'wc3': tf.Variable(tf.random_normal([3, 3, 64, 32])),
-    # fully connected, 24*32*64 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([24*32*64, 1024])),
+    # 2x2 conv, 64 inputs, 128 outputs
+    'wc3': tf.Variable(tf.random_normal([2, 2, 64, 128])),
+    # fully connected, 24*32*128 inputs, 1024 outputs
+    'wd1': tf.Variable(tf.random_normal([24*32*128, 1024])),
     # 1024 inputs, 2 outputs (class prediction)
     'out': tf.Variable(tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]))
 }
@@ -176,7 +177,7 @@ weights = {
 biases = {
     'bc1': tf.Variable(tf.random_normal([32])),
     'bc2': tf.Variable(tf.random_normal([64])),
-    'bc3': tf.Variable(tf.random_normal([32])),
+    'bc3': tf.Variable(tf.random_normal([128])),
     'bd1': tf.Variable(tf.random_normal([1024])),
     'out': tf.Variable(tf.random_normal([KEY_PARAMETERS["n_classes"]]))
 }
@@ -225,7 +226,9 @@ with tf.Session() as sess:
             len(train_images_dict["uncensored"])
         )
         total_batches = int(train_iter/batch_size)
-        print("Total batches to train: {}".format(total_batches))
+        print("{} batches to train with {} images".format(
+            total_batches, train_iter)
+        )
         while step * batch_size <= train_iter:
             images, classes = get_images(train_images_dict, batch_size)
             train_batch_x, train_batch_y = get_batch(images, classes)
@@ -259,6 +262,9 @@ with tf.Session() as sess:
         )
         total_batches = int(test_iter/batch_size)
         test_step = 1
+        print("{} batches to test with {} images".format(
+            total_batches, test_iter)
+        )
         while test_step * batch_size <= test_iter:
             test_images, test_y = get_images(test_images_dict, batch_size)
             test_batch_x, test_batch_y = get_batch(test_images, test_y)
