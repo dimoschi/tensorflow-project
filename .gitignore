@@ -6,3 +6,4 @@
 .DS_STORE
 #ignore Saved Models folder
 /Models
+/models

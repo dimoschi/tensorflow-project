@@ -150,7 +150,7 @@ def conv_net(x, weights, biases, dropout):
     #
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
-    fc1 = tf.reshape(conv1, [-1, 48*32*64])
+    fc1 = tf.reshape(conv2, [-1, 24*32*64])
     fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
     fc1 = tf.nn.relu(fc1)
     # Apply Dropout
@@ -168,7 +168,7 @@ weights = {
     'wc2': tf.Variable(tf.random_normal([3, 4, 32, 64])),
     'wc3': tf.Variable(tf.random_normal([3, 3, 64, 32])),
     # fully connected, 24*32*64 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([48*32*64, 1024])),
+    'wd1': tf.Variable(tf.random_normal([24*32*64, 1024])),
     # 1024 inputs, 2 outputs (class prediction)
     'out': tf.Variable(tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]))
 }
@@ -196,15 +196,14 @@ optimizer = tf.train.AdamOptimizer(
 correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
-# Initializing the variables
-init = tf.global_variables_initializer()
-
 # Saver Class
 saver = tf.train.Saver(max_to_keep=1)
 
+# Initializing the variables
+init = tf.global_variables_initializer()
+
 # Launch the graph
 with tf.Session() as sess:
-    tf.logging.set_verbosity(tf.logging.DEBUG)
     sess.run(init)
     print("Session started")
     training_epochs = KEY_PARAMETERS["training_epochs"]
