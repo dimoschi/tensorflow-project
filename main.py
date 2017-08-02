@@ -136,21 +136,24 @@ def conv_net(x, weights, biases, dropout):
     # Reshape input picture
     # x = tf.reshape(x, shape=[-1, 220, 220, 3])
     # Convolution Layer #1
-    conv1 = conv2d(x, weights['wc1'], biases['bc1'])
-    # Max Pooling (down-sampling)
-    conv1 = maxpool2d(conv1, k=2)
-    # print(conv1.get_shape())
-    # Convolution Layer #2
+    conv1 = conv2d(x, weights['wc1'], biases['bc1'], strides=2)
+    print(conv1.get_shape())
     conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
     # Max Pooling (down-sampling)
-    conv2 = maxpool2d(conv2, k=2)
+    conv2 = maxpool2d(conv1, k=2)
+    print(conv2.get_shape())
+    # Convolution Layer #2
+    conv3 = conv2d(conv2, weights['wc2'], biases['bc2'])
+    print(conv3.get_shape())
+    # Max Pooling (down-sampling)
+    conv3 = maxpool2d(conv3, k=2)
     # print(conv2.get_shape())
-    conv3 = conv2d(conv2, weights['wc3'], biases['bc3'])
-    # print(conv3.get_shape())
+    conv4 = conv2d(conv3, weights['wc3'], biases['bc3'])
+    print(conv4.get_shape())
 
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
-    fc1 = tf.reshape(conv3, [-1, 24*32*128])
+    fc1 = tf.reshape(conv4, [-1, 12*16*64])
     fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
     fc1 = tf.nn.relu(fc1)
     # Apply Dropout
@@ -162,22 +165,25 @@ def conv_net(x, weights, biases, dropout):
 
 # Store layers weight & bias
 weights = {
+    # 24x32 conv, 3 input, 32 outputs
+    'wc1': tf.Variable(tf.random_normal([24, 32, 3, 32])),
     # 12x16 conv, 3 input, 32 outputs
-    'wc1': tf.Variable(tf.random_normal([12, 16, 3, 32])),
+    'wc2': tf.Variable(tf.random_normal([48, 64, 32, 32])),
     # 3x4 conv, 32 inputs, 64 outputs
-    'wc2': tf.Variable(tf.random_normal([3, 4, 32, 64])),
+    'wc3': tf.Variable(tf.random_normal([3, 4, 32, 64])),
     # 2x2 conv, 64 inputs, 128 outputs
-    'wc3': tf.Variable(tf.random_normal([2, 2, 64, 128])),
+    'wc4': tf.Variable(tf.random_normal([2, 2, 64, 128])),
     # fully connected, 24*32*128 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([24*32*128, 1024])),
+    'wd1': tf.Variable(tf.random_normal([12*16*64, 1024])),
     # 1024 inputs, 2 outputs (class prediction)
     'out': tf.Variable(tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]))
 }
 
 biases = {
     'bc1': tf.Variable(tf.random_normal([32])),
-    'bc2': tf.Variable(tf.random_normal([64])),
-    'bc3': tf.Variable(tf.random_normal([128])),
+    'bc2': tf.Variable(tf.random_normal([32])),
+    'bc3': tf.Variable(tf.random_normal([64])),
+    'bc4': tf.Variable(tf.random_normal([128])),
     'bd1': tf.Variable(tf.random_normal([1024])),
     'out': tf.Variable(tf.random_normal([KEY_PARAMETERS["n_classes"]]))
 }
