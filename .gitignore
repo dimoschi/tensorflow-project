@@ -4,6 +4,8 @@
 /other_files
 .idea
 .DS_STORE
-#ignore Saved Models folder
+# Ignore Saved Models folder
 /Models
 /models
+# Ignore Tensorboard folder
+/tslog
