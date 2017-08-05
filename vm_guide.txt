@@ -1,0 +1,39 @@
+Small guide to connect to the VM and execute code (please only one at a time)
+
+Your usernames:
+antonisp
+christones21
+vathism
+krouvaladeco
+
+1. Download a SSH console (PUTTY f.e)
+At the host name and saven session you set the "snf-765977.vm.okeanos.grnet.gr".
+ You will be asked for a password, it's either
+'1234abcd' or 'abcd1234'
+
+2. After you connect use command:
+"passwd"
+to change your password
+
+3. Every time you connect to execute code you need to run command:
+"tmux -S /tmp/shareds attach -t tf"
+which will connect you to a strange thing called tmux (google it!) That way even if you disconnect
+from the machine, the code will keep running and you can connect at a later time
+(either you or someone else) and grab the results
+
+4. To run the code just run the following commands in order:
+1. source ~/tensorflow/bin/activate
+2. cd sex-drugs-rock-n-roll/
+3. python main.py > output/out_<something_unique>.txt
+That way you will have the output written to a file rather to the console.
+
+5. At any time you can detach from the tmux console, by using the following shortcut:
+ctrl+b d
+
+Keep in mind that no more than one person can use the VM simultaneously. If you connect while someone
+else uses the VM, you will see him writing.
+
+Optional:
+git br, will reveal the branches
+git co <branch_name> will change the branch
+git pull will grab the code
