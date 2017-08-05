@@ -25,15 +25,21 @@ KEY_PARAMETERS = {
     "censored_ratio": 0.4,
     "test_train_ratio": 0.2,
     "training_epochs": 10,
+    "log_dir": "tslog",
+    "run_name": "session_1_conv_4"
 }
 
 
 # tf Graph input
 x = tf.placeholder(
     tf.float32,
-    shape=[None, KEY_PARAMETERS["height"], KEY_PARAMETERS["width"], 3]
+    shape=[None, KEY_PARAMETERS["height"], KEY_PARAMETERS["width"], 3],
+    name="Input_Images"
 )
-y = tf.placeholder(tf.float32, shape=[None, KEY_PARAMETERS["n_classes"]])
+y = tf.placeholder(
+    tf.float32, shape=[None, KEY_PARAMETERS["n_classes"]],
+    name="Output_Classes"
+)
 keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
 
 
@@ -117,47 +123,61 @@ def get_batch(images, y):
 
 
 # Create some wrappers for simplicity
-def conv2d(x, W, b, strides=1):
+def conv2d(x, W, b, name, strides=1):
     # Conv2D wrapper, with bias and relu activation
-    x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
-    x = tf.nn.bias_add(x, b)
-    return tf.nn.relu(x)
+    with tf.name_scope(name):
+        x = tf.nn.conv2d(
+            x, W, strides=[1, strides, strides, 1],
+            padding='SAME', name="Convolution"
+        )
+        x = tf.nn.bias_add(x, b, name="Bias_Add")
+        x = tf.nn.relu(x, name="Relu_Activation")
+    return x
 
 
-def maxpool2d(x, k=2):
+def maxpool2d(x, name, k=2):
     # MaxPool2D wrapper
-    return tf.nn.max_pool(
-        x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME'
-    )
+    with tf.name_scope(name):
+        max_pool = tf.nn.max_pool(
+            x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
+            padding='SAME', name="Max_Pool"
+        )
+    return max_pool
+
+
+def fully_connected(conv_layer, shape, w, b, name, do=1):
+    with tf.name_scope(name):
+        fc = tf.reshape(conv_layer, shape)
+        fc = tf.add(tf.matmul(fc, w), b)
+        fc = tf.nn.relu(fc)
+        # Apply Dropout
+        fc = tf.nn.dropout(fc, do)
+    return fc
 
 
 # Create model
 def conv_net(x, weights, biases, dropout):
-    # Reshape input picture
-    # x = tf.reshape(x, shape=[-1, 220, 220, 3])
     # Convolution Layer #1
-    conv1 = conv2d(x, weights['wc1'], biases['bc1'], strides=2)
-    print(conv1.get_shape())
-    conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
+    conv1 = conv2d(
+        x, weights['wc1'], biases['bc1'], 'Convolution_1', strides=2
+    )
+    conv2 = conv2d(conv1, weights['wc2'], biases['bc2'], 'Convolution_2')
     # Max Pooling (down-sampling)
-    conv2 = maxpool2d(conv1, k=2)
-    print(conv2.get_shape())
-    # Convolution Layer #2
-    conv3 = conv2d(conv2, weights['wc2'], biases['bc2'])
-    print(conv3.get_shape())
-    # Max Pooling (down-sampling)
-    conv3 = maxpool2d(conv3, k=2)
+    conv2 = maxpool2d(conv2, 'Max_Pool_1', k=2)
     # print(conv2.get_shape())
-    conv4 = conv2d(conv3, weights['wc3'], biases['bc3'])
+    # Convolution Layer #2
+    conv3 = conv2d(conv2, weights['wc3'], biases['bc3'], 'Convolution_3')
+    conv4 = conv2d(conv3, weights['wc4'], biases['bc4'], 'Convolution_4')
+    # Max Pooling (down-sampling)
+    conv4 = maxpool2d(conv4, 'Max_Pool_2', k=2)
     print(conv4.get_shape())
 
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
-    fc1 = tf.reshape(conv4, [-1, 12*16*64])
-    fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
-    fc1 = tf.nn.relu(fc1)
-    # Apply Dropout
-    fc1 = tf.nn.dropout(fc1, dropout)
+    fc1 = fully_connected(
+        conv4, [-1, 12*16*64], weights['wd1'], biases['bd1'],
+        'Fully_connected', dropout
+    )
     # Output, class prediction
     out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
     return out
@@ -166,51 +186,85 @@ def conv_net(x, weights, biases, dropout):
 # Store layers weight & bias
 weights = {
     # 24x32 conv, 3 input, 32 outputs
-    'wc1': tf.Variable(tf.random_normal([24, 32, 3, 32])),
+    'wc1': tf.Variable(tf.random_normal([12, 16, 3, 32]), name='weight_1'),
     # 12x16 conv, 3 input, 32 outputs
-    'wc2': tf.Variable(tf.random_normal([48, 64, 32, 32])),
+    'wc2': tf.Variable(tf.random_normal([3, 4, 32, 64]), name='weight_2'),
     # 3x4 conv, 32 inputs, 64 outputs
-    'wc3': tf.Variable(tf.random_normal([3, 4, 32, 64])),
+    'wc3': tf.Variable(tf.random_normal([3, 4, 64, 64]), name='weight_3'),
     # 2x2 conv, 64 inputs, 128 outputs
-    'wc4': tf.Variable(tf.random_normal([2, 2, 64, 128])),
+    'wc4': tf.Variable(tf.random_normal([2, 2, 64, 64]), name='weight_4'),
     # fully connected, 24*32*128 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([12*16*64, 1024])),
+    'wd1': tf.Variable(tf.random_normal([12*16*64, 1024]), name='weight_fc'),
     # 1024 inputs, 2 outputs (class prediction)
-    'out': tf.Variable(tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]))
+    'out': tf.Variable(
+        tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]),
+        name='weight_out'
+    )
 }
 
 biases = {
-    'bc1': tf.Variable(tf.random_normal([32])),
-    'bc2': tf.Variable(tf.random_normal([32])),
-    'bc3': tf.Variable(tf.random_normal([64])),
-    'bc4': tf.Variable(tf.random_normal([128])),
-    'bd1': tf.Variable(tf.random_normal([1024])),
-    'out': tf.Variable(tf.random_normal([KEY_PARAMETERS["n_classes"]]))
+    'bc1': tf.Variable(tf.random_normal([32]), name='bias_1'),
+    'bc2': tf.Variable(tf.random_normal([64]), name='bias_2'),
+    'bc3': tf.Variable(tf.random_normal([64]), name='bias_3'),
+    'bc4': tf.Variable(tf.random_normal([64]), name='bias_4'),
+    'bd1': tf.Variable(tf.random_normal([1024]), name='bias_fc'),
+    'out': tf.Variable(
+        tf.random_normal([KEY_PARAMETERS["n_classes"]]),
+        name='bias_out'
+    )
 }
+
 
 # Construct model
 pred = conv_net(x, weights, biases, keep_prob)
 
+
 # Define loss and optimizer
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
-    logits=pred, labels=y)
-)
-optimizer = tf.train.AdamOptimizer(
-    learning_rate=KEY_PARAMETERS["learning_rate"]
-).minimize(cost)
+with tf.name_scope('cost'):
+    cost = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+        logits=pred, labels=y, name='cost')
+    )
+    tf.summary.scalar('cost', cost)
+
+
+with tf.name_scope('train'):
+    optimizer = tf.train.AdamOptimizer(
+        learning_rate=KEY_PARAMETERS["learning_rate"]
+    ).minimize(cost)
+
 
 # Evaluate model
-correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
-accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+with tf.name_scope('accuracy'):
+    with tf.name_scope('correct_prediction'):
+        correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
+    with tf.name_scope('accuracy'):
+        accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+tf.summary.scalar('accuracy', accuracy)
+
 
 # Saver Class
 saver = tf.train.Saver(max_to_keep=1)
 
+
 # Initializing the variables
 init = tf.global_variables_initializer()
 
+
 # Launch the graph
 with tf.Session() as sess:
+    merged = tf.summary.merge_all()
+    train_writer = tf.summary.FileWriter(
+        os.path.join(
+            os.getcwd(), KEY_PARAMETERS["log_dir"],
+            KEY_PARAMETERS["run_name"], "train"
+        ), sess.graph
+    )
+    test_writer = tf.summary.FileWriter(
+        os.path.join(
+            os.getcwd(), KEY_PARAMETERS["log_dir"],
+            KEY_PARAMETERS["run_name"], "test"
+        ))
+    tf.global_variables_initializer().run()
     sess.run(init)
     print("Session started")
     training_epochs = KEY_PARAMETERS["training_epochs"]
@@ -245,15 +299,19 @@ with tf.Session() as sess:
                 keep_prob: dropout
             })
             # Calculate batch loss and accuracy
-            loss, acc = sess.run([cost, accuracy], feed_dict={
-                x: train_batch_x,
-                y: train_batch_y,
-                keep_prob: dropout
-            })
+            summary, loss, acc = sess.run(
+                [merged, cost, accuracy],
+                feed_dict={
+                    x: train_batch_x,
+                    y: train_batch_y,
+                    keep_prob: dropout
+                }
+            )
             avg_cost += loss / total_batches
             avg_train_acc += acc / total_batches
             # Print every 20 steps
             if (step % 20 == 0) or (step % total_batches == 0):
+                train_writer.add_summary(summary, step)
                 print(
                     "Step: " + str(step) +
                     ", Average Cost: " + "{:.6f}".format(avg_cost) +
@@ -274,11 +332,12 @@ with tf.Session() as sess:
         while test_step * batch_size <= test_iter:
             test_images, test_y = get_images(test_images_dict, batch_size)
             test_batch_x, test_batch_y = get_batch(test_images, test_y)
-            t_acc = sess.run(accuracy, feed_dict={
+            summary, t_acc = sess.run([merged, accuracy], feed_dict={
                 x: test_batch_x,
                 y: test_batch_y,
                 keep_prob: 1.
             })
+            test_writer.add_summary(summary, test_step)
             avg_test_acc += t_acc / total_batches
             test_step += 1
         end_time = datetime.datetime.now()
@@ -295,7 +354,8 @@ with tf.Session() as sess:
             best_accuracy = avg_test_acc
             save_time = datetime.datetime.now() - save_time
             print(
-                "Best Model Updated. Accuracy: {}".format(str(avg_test_acc))
+                "Best Model Updated. Accuracy: {}".format(
+                    str(avg_test_acc))
             )
         else:
             print(
