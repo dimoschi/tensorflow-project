@@ -26,7 +26,7 @@ KEY_PARAMETERS = {
     "test_train_ratio": 0.2,
     "training_epochs": 10,
     "log_dir": "tslog",
-    "run_name": "session_1_conv_4"
+    "run_name": "test_conv_4"
 }
 
 
@@ -131,7 +131,9 @@ def conv2d(x, W, b, name, strides=1):
             padding='SAME', name="Convolution"
         )
         x = tf.nn.bias_add(x, b, name="Bias_Add")
+        tf.summary.histogram('pre_activations', x)
         x = tf.nn.relu(x, name="Relu_Activation")
+        tf.summary.histogram('activation', x)
     return x
 
 
@@ -161,16 +163,21 @@ def conv_net(x, weights, biases, dropout):
     conv1 = conv2d(
         x, weights['wc1'], biases['bc1'], 'Convolution_1', strides=2
     )
+    with tf.name_scope('conv_input_reshape'):
+        conv1_a = conv2d(
+            conv1, weights['wc1_a'], biases['bc1_a'],
+            'Convolution_1a', strides=2
+        )
+        tf.summary.image('convolution_1', conv1_a, 12)
     conv2 = conv2d(conv1, weights['wc2'], biases['bc2'], 'Convolution_2')
     # Max Pooling (down-sampling)
     conv2 = maxpool2d(conv2, 'Max_Pool_1', k=2)
-    # print(conv2.get_shape())
+    print(conv2.get_shape())
     # Convolution Layer #2
     conv3 = conv2d(conv2, weights['wc3'], biases['bc3'], 'Convolution_3')
     conv4 = conv2d(conv3, weights['wc4'], biases['bc4'], 'Convolution_4')
     # Max Pooling (down-sampling)
     conv4 = maxpool2d(conv4, 'Max_Pool_2', k=2)
-    print(conv4.get_shape())
 
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
@@ -187,6 +194,7 @@ def conv_net(x, weights, biases, dropout):
 weights = {
     # 24x32 conv, 3 input, 32 outputs
     'wc1': tf.Variable(tf.random_normal([12, 16, 3, 32]), name='weight_1'),
+    'wc1_a': tf.Variable(tf.random_normal([12, 16, 32, 3]), name='weight_1a'),
     # 12x16 conv, 3 input, 32 outputs
     'wc2': tf.Variable(tf.random_normal([3, 4, 32, 64]), name='weight_2'),
     # 3x4 conv, 32 inputs, 64 outputs
@@ -204,6 +212,7 @@ weights = {
 
 biases = {
     'bc1': tf.Variable(tf.random_normal([32]), name='bias_1'),
+    'bc1_a': tf.Variable(tf.random_normal([3]), name='bias_1a'),
     'bc2': tf.Variable(tf.random_normal([64]), name='bias_2'),
     'bc3': tf.Variable(tf.random_normal([64]), name='bias_3'),
     'bc4': tf.Variable(tf.random_normal([64]), name='bias_4'),
@@ -309,11 +318,13 @@ with tf.Session() as sess:
             )
             avg_cost += loss / total_batches
             avg_train_acc += acc / total_batches
+            total_step = epoch*total_batches
             # Print every 20 steps
             if (step % 20 == 0) or (step % total_batches == 0):
-                train_writer.add_summary(summary, step)
+                train_writer.add_summary(summary, total_step+step)
                 print(
-                    "Step: " + str(step) +
+                    "Epoch: " + str(epoch+1) +
+                    ", Step: " + str(step) +
                     ", Average Cost: " + "{:.6f}".format(avg_cost) +
                     ", Average Training Accuracy: " +
                     "{:.6f}".format(avg_train_acc)
@@ -337,7 +348,8 @@ with tf.Session() as sess:
                 y: test_batch_y,
                 keep_prob: 1.
             })
-            test_writer.add_summary(summary, test_step)
+            total_step = epoch*total_batches
+            test_writer.add_summary(summary, total_step+test_step)
             avg_test_acc += t_acc / total_batches
             test_step += 1
         end_time = datetime.datetime.now()
