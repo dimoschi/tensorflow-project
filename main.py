@@ -26,73 +26,76 @@ KEY_PARAMETERS = {
     "test_train_ratio": 0.2,
     "training_epochs": 10,
     "log_dir": "tslog",
-    "run_name": "test_conv_4"
+    "run_name": "test_conv_1"
 }
 
 
 # tf Graph input
-x = tf.placeholder(
-    tf.float32,
-    shape=[None, KEY_PARAMETERS["height"], KEY_PARAMETERS["width"], 3],
-    name="Input_Images"
-)
-y = tf.placeholder(
-    tf.float32, shape=[None, KEY_PARAMETERS["n_classes"]],
-    name="Output_Classes"
-)
-keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
+with tf.name_scope('set-nn-variables'):
+    x = tf.placeholder(
+        tf.float32,
+        shape=[None, KEY_PARAMETERS["height"], KEY_PARAMETERS["width"], 3],
+        name="Input_Images"
+    )
+    y = tf.placeholder(
+        tf.float32, shape=[None, KEY_PARAMETERS["n_classes"]],
+        name="Output_Classes"
+    )
+    # dropout (keep probability)
+    keep_prob = tf.placeholder(tf.float32)
 
 
 # IMPORT images
 def split_dataset(ratio):
-    test_images = dict()
-    train_images = dict()
-    censored_files = os.listdir(
-        os.path.join(os.getcwd(), "input", "censored")
-    )
-    uncensored_files = os.listdir(
-        os.path.join(os.getcwd(), "input", "uncensored")
-    )
+    with tf.name_scope('Split_dataset'):
+        test_images = dict()
+        train_images = dict()
+        censored_files = os.listdir(
+            os.path.join(os.getcwd(), "input", "censored")
+        )
+        uncensored_files = os.listdir(
+            os.path.join(os.getcwd(), "input", "uncensored")
+        )
 
-    test_images["censored"] = random.sample(
-        censored_files, round(len(censored_files)*ratio)
-    )
-    train_images["censored"] = list(set(censored_files).difference(
-        set(test_images["censored"])
-    ))
-    test_images["uncensored"] = random.sample(
-        uncensored_files, round(len(uncensored_files)*ratio)
-    )
-    train_images["uncensored"] = list(set(uncensored_files).difference(
-        set(test_images["uncensored"])
-    ))
-
+        test_images["censored"] = random.sample(
+            censored_files, round(len(censored_files)*ratio)
+        )
+        train_images["censored"] = list(set(censored_files).difference(
+            set(test_images["censored"])
+        ))
+        test_images["uncensored"] = random.sample(
+            uncensored_files, round(len(uncensored_files)*ratio)
+        )
+        train_images["uncensored"] = list(set(uncensored_files).difference(
+            set(test_images["uncensored"])
+        ))
     return train_images, test_images
 
 
 def get_images(images_dict, batch_size=None):
-    images = []
-    images_labels = []
+    with tf.name_scope('Get_images'):
+        images = []
+        images_labels = []
 
-    path_censored = os.path.join(os.getcwd(), "input", "censored")
-    path_uncensored = os.path.join(os.getcwd(), "input", "uncensored")
+        path_censored = os.path.join(os.getcwd(), "input", "censored")
+        path_uncensored = os.path.join(os.getcwd(), "input", "uncensored")
 
-    censored_ratio = KEY_PARAMETERS["censored_ratio"]
-    try:
-        censored_size = round(batch_size*censored_ratio)
-        uncensored_size = batch_size - censored_size
-    except:
-        censored_size = len(images_dict["censored"])
-        uncensored_size = len(images_dict["uncensored"])
+        censored_ratio = KEY_PARAMETERS["censored_ratio"]
+        try:
+            censored_size = round(batch_size*censored_ratio)
+            uncensored_size = batch_size - censored_size
+        except:
+            censored_size = len(images_dict["censored"])
+            uncensored_size = len(images_dict["uncensored"])
 
-    for image in random.sample(images_dict["uncensored"], uncensored_size):
-        im = Image.open(os.path.join(path_uncensored, image))
-        images.append(fix_image(im))
-        images_labels.append([0, 1])
-    for image in random.sample(images_dict["censored"], censored_size):
-        im = Image.open(os.path.join(path_censored, image))
-        images.append(fix_image(im))
-        images_labels.append([1, 0])
+        for image in random.sample(images_dict["uncensored"], uncensored_size):
+            im = Image.open(os.path.join(path_uncensored, image))
+            images.append(fix_image(im))
+            images_labels.append([0, 1])
+        for image in random.sample(images_dict["censored"], censored_size):
+            im = Image.open(os.path.join(path_censored, image))
+            images.append(fix_image(im))
+            images_labels.append([1, 0])
     return images, images_labels
 
 
@@ -107,18 +110,20 @@ def fix_image(image):
     Returns:
         image: An image as PIL.Image in specific size and in RGB
     """
-    required_size = KEY_PARAMETERS["required_size"]
-    if image.mode != "RGB":
-        image = image.convert("RGB")
-    if image.size != required_size:
-        image = image.resize(required_size, Image.LANCZOS)
+    with tf.name_scope('Fix_image'):
+        required_size = KEY_PARAMETERS["required_size"]
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        if image.size != required_size:
+            image = image.resize(required_size, Image.LANCZOS)
     return image
 
 
 def get_batch(images, y):
-    batch_x = np.asarray([np.asarray(
-        image, dtype=np.float32) for image in images])
-    batch_y = np.asarray(y)
+    with tf.name_scope('Create_batch'):
+        batch_x = np.asarray([np.asarray(
+            image, dtype=np.float32) for image in images])
+        batch_y = np.asarray(y)
     return batch_x, batch_y
 
 
@@ -131,9 +136,9 @@ def conv2d(x, W, b, name, strides=1):
             padding='SAME', name="Convolution"
         )
         x = tf.nn.bias_add(x, b, name="Bias_Add")
-        tf.summary.histogram('pre_activations', x)
-        x = tf.nn.relu(x, name="Relu_Activation")
-        tf.summary.histogram('activation', x)
+        tf.summary.histogram('Pre_activation', x)
+        x = tf.nn.relu(x, name="Relu_activation")
+        tf.summary.histogram('Activation', x)
     return x
 
 
@@ -142,7 +147,7 @@ def maxpool2d(x, name, k=2):
     with tf.name_scope(name):
         max_pool = tf.nn.max_pool(
             x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
-            padding='SAME', name="Max_Pool"
+            padding='SAME', name="Max_Pooling"
         )
     return max_pool
 
@@ -160,72 +165,108 @@ def fully_connected(conv_layer, shape, w, b, name, do=1):
 # Create model
 def conv_net(x, weights, biases, dropout):
     # Convolution Layer #1
+    with tf.name_scope('raw_image_layer'):
+        V = tf.slice(
+            x, (0, 0, 0, 0), (1, -1, -1, -1), name='slice_first_input'
+        )
+        tf.summary.image("raw_image", V)
+
     conv1 = conv2d(
         x, weights['wc1'], biases['bc1'], 'Convolution_1', strides=2
     )
-    with tf.name_scope('conv_input_reshape'):
-        conv1_a = conv2d(
-            conv1, weights['wc1_a'], biases['bc1_a'],
-            'Convolution_1a', strides=2
+
+    with tf.name_scope('convolution-1_visualization'):
+        # Prepare for visualization
+        # Take only convolutions of first image, discard convolutions
+        # for other images.
+        V = tf.slice(
+            conv1, (0, 0, 0, 0), (1, -1, -1, -1), name='slice_first_input'
         )
-        tf.summary.image('convolution_1', conv1_a, 12)
-    conv2 = conv2d(conv1, weights['wc2'], biases['bc2'], 'Convolution_2')
+
+        # Reorder so the channels are in the first dimension, x and y follow.
+        V = tf.transpose(V, (0, 3, 1, 2))
+        # Bring into shape expected by image_summary
+        V = tf.reshape(V, (-1, 48, 64, 1))
+
+        tf.summary.image("conv_1_image", V, max_outputs=4)
+
+    conv2 = conv2d(
+        conv1, weights['wc2'], biases['bc2'], 'Convolution_2', strides=1
+    )
+
+    with tf.name_scope('convolution_2_visualization'):
+        # Prepare for visualization
+        # Take only convolutions of first image, discard convolutions
+        # for other images.
+        V = tf.slice(
+            conv2, (0, 0, 0, 0), (1, -1, -1, -1), name='slice_first_input'
+        )
+
+        # Reorder so the channels are in the first dimension, x and y follow.
+        V = tf.transpose(V, (0, 3, 1, 2))
+        # Bring into shape expected by image_summary
+        V = tf.reshape(V, (-1, 48, 64, 1))
+
+        tf.summary.image("conv_2_image", V, max_outputs=6)
     # Max Pooling (down-sampling)
     conv2 = maxpool2d(conv2, 'Max_Pool_1', k=2)
     print(conv2.get_shape())
-    # Convolution Layer #2
-    conv3 = conv2d(conv2, weights['wc3'], biases['bc3'], 'Convolution_3')
-    conv4 = conv2d(conv3, weights['wc4'], biases['bc4'], 'Convolution_4')
-    # Max Pooling (down-sampling)
-    conv4 = maxpool2d(conv4, 'Max_Pool_2', k=2)
+    # # Convolution Layer #2
+    # conv3 = conv2d(conv2, weights['wc3'], biases['bc3'], 'Convolution_3')
+    # conv4 = conv2d(conv3, weights['wc4'], biases['bc4'], 'Convolution_4')
+    # # Max Pooling (down-sampling)
+    # conv4 = maxpool2d(conv4, 'Max_Pool_2', k=2)
 
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
     fc1 = fully_connected(
-        conv4, [-1, 12*16*64], weights['wd1'], biases['bd1'],
+        conv2, [-1, 24*32*24], weights['wd1'], biases['bd1'],
         'Fully_connected', dropout
     )
     # Output, class prediction
-    out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
+    with tf.name_scope('output'):
+        out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
     return out
 
 
 # Store layers weight & bias
-weights = {
-    # 24x32 conv, 3 input, 32 outputs
-    'wc1': tf.Variable(tf.random_normal([12, 16, 3, 32]), name='weight_1'),
-    'wc1_a': tf.Variable(tf.random_normal([12, 16, 32, 3]), name='weight_1a'),
-    # 12x16 conv, 3 input, 32 outputs
-    'wc2': tf.Variable(tf.random_normal([3, 4, 32, 64]), name='weight_2'),
-    # 3x4 conv, 32 inputs, 64 outputs
-    'wc3': tf.Variable(tf.random_normal([3, 4, 64, 64]), name='weight_3'),
-    # 2x2 conv, 64 inputs, 128 outputs
-    'wc4': tf.Variable(tf.random_normal([2, 2, 64, 64]), name='weight_4'),
-    # fully connected, 24*32*128 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([12*16*64, 1024]), name='weight_fc'),
-    # 1024 inputs, 2 outputs (class prediction)
-    'out': tf.Variable(
-        tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]),
-        name='weight_out'
-    )
-}
+with tf.name_scope('set_weigths_and_biases'):
+    weights = {
+        # 24x32 conv, 3 input, 32 outputs
+        'wc1': tf.Variable(tf.random_normal([4, 4, 3, 12]), name='weight_1'),
+        # 12x16 conv, 3 input, 32 outputs
+        'wc2': tf.Variable(tf.random_normal([2, 2, 12, 24]), name='weight_2'),
+        # 3x4 conv, 32 inputs, 64 outputs
+        'wc3': tf.Variable(tf.random_normal([3, 4, 64, 64]), name='weight_3'),
+        # 2x2 conv, 64 inputs, 128 outputs
+        'wc4': tf.Variable(tf.random_normal([2, 2, 64, 64]), name='weight_4'),
+        # fully connected, 24*32*128 inputs, 1024 outputs
+        'wd1': tf.Variable(
+            tf.random_normal([24*32*24, 1024]), name='weight_fc'
+        ),
+        # 1024 inputs, 2 outputs (class prediction)
+        'out': tf.Variable(
+            tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]),
+            name='weight_out'
+        )
+    }
 
-biases = {
-    'bc1': tf.Variable(tf.random_normal([32]), name='bias_1'),
-    'bc1_a': tf.Variable(tf.random_normal([3]), name='bias_1a'),
-    'bc2': tf.Variable(tf.random_normal([64]), name='bias_2'),
-    'bc3': tf.Variable(tf.random_normal([64]), name='bias_3'),
-    'bc4': tf.Variable(tf.random_normal([64]), name='bias_4'),
-    'bd1': tf.Variable(tf.random_normal([1024]), name='bias_fc'),
-    'out': tf.Variable(
-        tf.random_normal([KEY_PARAMETERS["n_classes"]]),
-        name='bias_out'
-    )
-}
+    biases = {
+        'bc1': tf.Variable(tf.random_normal([12]), name='bias_1'),
+        'bc2': tf.Variable(tf.random_normal([24]), name='bias_2'),
+        'bc3': tf.Variable(tf.random_normal([64]), name='bias_3'),
+        'bc4': tf.Variable(tf.random_normal([64]), name='bias_4'),
+        'bd1': tf.Variable(tf.random_normal([1024]), name='bias_fc'),
+        'out': tf.Variable(
+            tf.random_normal([KEY_PARAMETERS["n_classes"]]),
+            name='bias_out'
+        )
+    }
 
 
 # Construct model
-pred = conv_net(x, weights, biases, keep_prob)
+with tf.name_scope('prediction'):
+    pred = conv_net(x, weights, biases, keep_prob)
 
 
 # Define loss and optimizer
