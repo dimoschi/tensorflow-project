@@ -26,7 +26,7 @@ KEY_PARAMETERS = {
     "test_train_ratio": 0.2,
     "training_epochs": 10,
     "log_dir": "tslog",
-    "run_name": "test_conv_1"
+    "run_name": "test_4_conv_1"
 }
 
 
@@ -172,8 +172,9 @@ def conv_net(x, weights, biases, dropout):
         tf.summary.image("raw_image", V)
 
     conv1 = conv2d(
-        x, weights['wc1'], biases['bc1'], 'Convolution_1', strides=2
+        x, weights['wc1'], biases['bc1'], 'Convolution_1', strides=4
     )
+    print(conv1.get_shape())
 
     with tf.name_scope('convolution-1_visualization'):
         # Prepare for visualization
@@ -191,7 +192,7 @@ def conv_net(x, weights, biases, dropout):
         tf.summary.image("conv_1_image", V, max_outputs=4)
 
     conv2 = conv2d(
-        conv1, weights['wc2'], biases['bc2'], 'Convolution_2', strides=1
+        conv1, weights['wc2'], biases['bc2'], 'Convolution_2', strides=2
     )
 
     with tf.name_scope('convolution_2_visualization'):
@@ -211,16 +212,19 @@ def conv_net(x, weights, biases, dropout):
     # Max Pooling (down-sampling)
     conv2 = maxpool2d(conv2, 'Max_Pool_1', k=2)
     print(conv2.get_shape())
-    # # Convolution Layer #2
-    # conv3 = conv2d(conv2, weights['wc3'], biases['bc3'], 'Convolution_3')
-    # conv4 = conv2d(conv3, weights['wc4'], biases['bc4'], 'Convolution_4')
-    # # Max Pooling (down-sampling)
-    # conv4 = maxpool2d(conv4, 'Max_Pool_2', k=2)
-
+    # Convolution Layer #2
+    conv3 = conv2d(
+        conv2, weights['wc3'], biases['bc3'], 'Convolution_3', strides=2
+    )
+    print(conv3.get_shape())
+    conv4 = conv2d(conv3, weights['wc4'], biases['bc4'], 'Convolution_4')
+    # Max Pooling (down-sampling)
+    conv4 = maxpool2d(conv4, 'Max_Pool_2', k=2)
+    print(conv4.get_shape())
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
     fc1 = fully_connected(
-        conv2, [-1, 24*32*24], weights['wd1'], biases['bd1'],
+        conv4, [-1, 2*2*96], weights['wd1'], biases['bd1'],
         'Fully_connected', dropout
     )
     # Output, class prediction
@@ -233,30 +237,30 @@ def conv_net(x, weights, biases, dropout):
 with tf.name_scope('set_weigths_and_biases'):
     weights = {
         # 24x32 conv, 3 input, 32 outputs
-        'wc1': tf.Variable(tf.random_normal([4, 4, 3, 12]), name='weight_1'),
+        'wc1': tf.Variable(tf.random_normal([4, 4, 3, 24]), name='weight_1'),
         # 12x16 conv, 3 input, 32 outputs
-        'wc2': tf.Variable(tf.random_normal([2, 2, 12, 24]), name='weight_2'),
+        'wc2': tf.Variable(tf.random_normal([2, 2, 24, 48]), name='weight_2'),
         # 3x4 conv, 32 inputs, 64 outputs
-        'wc3': tf.Variable(tf.random_normal([3, 4, 64, 64]), name='weight_3'),
+        'wc3': tf.Variable(tf.random_normal([2, 2, 48, 96]), name='weight_3'),
         # 2x2 conv, 64 inputs, 128 outputs
-        'wc4': tf.Variable(tf.random_normal([2, 2, 64, 64]), name='weight_4'),
+        'wc4': tf.Variable(tf.random_normal([1, 1, 96, 96]), name='weight_4'),
         # fully connected, 24*32*128 inputs, 1024 outputs
         'wd1': tf.Variable(
-            tf.random_normal([24*32*24, 1024]), name='weight_fc'
+            tf.random_normal([2*2*96, 768]), name='weight_fc'
         ),
         # 1024 inputs, 2 outputs (class prediction)
         'out': tf.Variable(
-            tf.random_normal([1024, KEY_PARAMETERS["n_classes"]]),
+            tf.random_normal([768, KEY_PARAMETERS["n_classes"]]),
             name='weight_out'
         )
     }
 
     biases = {
-        'bc1': tf.Variable(tf.random_normal([12]), name='bias_1'),
-        'bc2': tf.Variable(tf.random_normal([24]), name='bias_2'),
-        'bc3': tf.Variable(tf.random_normal([64]), name='bias_3'),
-        'bc4': tf.Variable(tf.random_normal([64]), name='bias_4'),
-        'bd1': tf.Variable(tf.random_normal([1024]), name='bias_fc'),
+        'bc1': tf.Variable(tf.random_normal([24]), name='bias_1'),
+        'bc2': tf.Variable(tf.random_normal([48]), name='bias_2'),
+        'bc3': tf.Variable(tf.random_normal([96]), name='bias_3'),
+        'bc4': tf.Variable(tf.random_normal([96]), name='bias_4'),
+        'bd1': tf.Variable(tf.random_normal([768]), name='bias_fc'),
         'out': tf.Variable(
             tf.random_normal([KEY_PARAMETERS["n_classes"]]),
             name='bias_out'
