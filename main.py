@@ -333,14 +333,17 @@ with tf.Session() as sess:
     test_train_ratio = KEY_PARAMETERS["test_train_ratio"]
     batch_size = KEY_PARAMETERS["batch_size"]
     dropout = KEY_PARAMETERS["dropout"]
-    best_accuracy = 0
+    best_accuracy = 0.
+    best_true_positive_ratio = 0.
     for epoch in range(training_epochs):
+        print("=====================================")
         print("Epoch {} started".format(str(epoch+1)))
         start_time = datetime.datetime.now()
         step = 1
         avg_cost = 0.
         avg_train_acc = 0.
         avg_test_acc = 0.
+        total_conf = np.zeros((2, 2))
         # Split dataset into train and test for current epoch
         train_images_dict, test_images_dict = split_dataset(test_train_ratio)
         train_iter = (
@@ -393,7 +396,6 @@ with tf.Session() as sess:
         print("{} batches to test with {} images".format(
             total_batches, test_iter)
         )
-        total_conf = np.zeros((2, 2))
         while test_step * batch_size <= test_iter:
             test_images, test_y = get_images(test_images_dict, batch_size)
             test_batch_x, test_batch_y = get_batch(test_images, test_y)
@@ -418,21 +420,38 @@ with tf.Session() as sess:
 
         # If accuracy is better than best_accuracy
         # update best_model and accuracy
-        if (avg_test_acc > best_accuracy):
+        true_positive_ratio = total_conf[0, 0]/(
+            total_conf[0, 0] + total_conf[0, 1]
+        )
+        if (true_positive_ratio > best_true_positive_ratio):
             save_time = datetime.datetime.now()
             saver.save(
                 sess,
                 os.path.join(os.getcwd(), 'models', 'best-model')
             )
+            best_true_positive_ratio = true_positive_ratio
             best_accuracy = avg_test_acc
             save_time = datetime.datetime.now() - save_time
             print(
-                "Best Model Updated. Accuracy: {}".format(
-                    str(avg_test_acc))
+                "Best Model Updated.\nTrue Positive Ratio: {}".format(
+                    str(true_positive_ratio))
             )
+        elif (true_positive_ratio == best_true_positive_ratio):
+            if avg_test_acc > best_accuracy:
+                save_time = datetime.datetime.now()
+                saver.save(
+                    sess,
+                    os.path.join(os.getcwd(), 'models', 'best-model')
+                )
+                best_accuracy = avg_test_acc
+                save_time = datetime.datetime.now() - save_time
+                print(
+                    "Best Model Updated.\nAccuracy: {}".format(
+                        str(avg_test_acc))
+                )
         else:
             print(
-                "Best Model NOT Updated. (Best accuracy: {}".format(
+                "Best Model NOT Updated. (Best accuracy: {})".format(
                     str(best_accuracy)
                 ))
 
