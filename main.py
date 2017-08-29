@@ -302,7 +302,7 @@ saver = tf.train.Saver(max_to_keep=1)
 
 # Confusion matrix
 confusion = tf.confusion_matrix(
-    labels=tf.argmax(y, 1), predictions=tf.argmax(pred, 1)
+    labels=tf.argmax(y, 1), predictions=tf.argmax(pred, 1), num_classes=2,
 )
 
 # Initializing the variables
@@ -393,6 +393,7 @@ with tf.Session() as sess:
         print("{} batches to test with {} images".format(
             total_batches, test_iter)
         )
+        total_conf = np.zeros((2, 2))
         while test_step * batch_size <= test_iter:
             test_images, test_y = get_images(test_images_dict, batch_size)
             test_batch_x, test_batch_y = get_batch(test_images, test_y)
@@ -410,7 +411,8 @@ with tf.Session() as sess:
                 y: test_batch_y,
                 keep_prob: 1.
             })
-            print('***Confusion Matrix: ' + str(conf))
+            total_conf += conf
+        print('Total Confusion Matrix: \n' + str(total_conf))
         end_time = datetime.datetime.now()
         dt = end_time - start_time
 
