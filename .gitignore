@@ -1,11 +1,11 @@
 # Ignore input & output folders
-/input
-/output
-/other_files
+input
+output
+other_files
 .idea
 .DS_STORE
 # Ignore Saved Models folder
-/Models
-/models
+Models
+models
 # Ignore Tensorboard folder
-/tslog
+tslog
