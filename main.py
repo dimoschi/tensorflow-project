@@ -26,7 +26,7 @@ KEY_PARAMETERS = {
     "test_train_ratio": 0.2,
     "training_epochs": 10,
     "log_dir": "tslog",
-    "run_name": "conv_images"
+    "run_name": "tensorboard_test"
 }
 
 
@@ -42,7 +42,7 @@ with tf.name_scope('set_nn_variables'):
         name="Output_Classes"
     )
     # dropout (keep probability)
-    keep_prob = tf.placeholder(tf.float32)
+    keep_prob = tf.placeholder(tf.float32, name='dropout')
 
 
 # IMPORT images
@@ -136,9 +136,7 @@ def conv2d(x, W, b, name, strides=1):
             padding='SAME', name="Convolution"
         )
         x = tf.nn.bias_add(x, b, name="Bias_Add")
-        tf.summary.histogram('Pre_activation', x)
         x = tf.nn.relu(x, name="Relu_activation")
-        tf.summary.histogram('Activation', x)
     return x
 
 
@@ -166,11 +164,10 @@ def fully_connected(conv_layer, shape, w, b, name, do=1):
 def conv_net(x, weights, biases, dropout):
     with tf.name_scope('convolution_network'):
         # Convolution Layer #1
-        with tf.name_scope('raw_image_layer'):
-            V = tf.slice(
-                x, (0, 0, 0, 0), (1, -1, -1, -1), name='slice_first_input'
-            )
-            tf.summary.image("raw_image", V)
+        V = tf.slice(
+            x, (0, 0, 0, 0), (1, -1, -1, -1), name='slice_first_input'
+        )
+        tf.summary.image("raw_image", V)
 
         conv1 = conv2d(
             x, weights['wc1'], biases['bc1'], 'Convolution_1', strides=4
@@ -225,7 +222,7 @@ def conv_net(x, weights, biases, dropout):
         # Output, class prediction
         with tf.name_scope('output'):
             out = tf.matmul(fc1, weights['out'])
-            x = tf.nn.bias_add(out, biases['out'], name="Bias_Add")
+            out = tf.nn.bias_add(out, biases['out'], name="Bias_Add")
     return out
 
 
@@ -273,19 +270,23 @@ with tf.name_scope('cost_calculation'):
     cost = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
         logits=pred, labels=y, name='cost')
     )
-    tf.summary.scalar('cost', cost)
+    tf.summary.scalar('scalar_cost', cost)
 
-
-optimizer = tf.train.AdamOptimizer(
-    learning_rate=KEY_PARAMETERS["learning_rate"]
-).minimize(cost)
+with tf.name_scope('optimizer_process'):
+    optimizer = tf.train.AdamOptimizer(
+        learning_rate=KEY_PARAMETERS["learning_rate"]
+    ).minimize(cost)
+    for key in weights:
+        tf.summary.histogram('Weights', weights[key])
+    for key in biases:
+        tf.summary.histogram('Biases', biases[key])
 
 
 # Evaluate model
 with tf.name_scope('accuracy_calculation'):
     correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
-    tf.summary.scalar('accuracy', accuracy)
+    tf.summary.scalar('scalar_accuracy', accuracy)
 
 
 # Saver Class
