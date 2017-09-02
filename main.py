@@ -26,12 +26,12 @@ KEY_PARAMETERS = {
     "test_train_ratio": 0.2,
     "training_epochs": 10,
     "log_dir": "tslog",
-    "run_name": "test_4_conv_1"
+    "run_name": "conv_images"
 }
 
 
 # tf Graph input
-with tf.name_scope('set-nn-variables'):
+with tf.name_scope('set_nn_variables'):
     x = tf.placeholder(
         tf.float32,
         shape=[None, KEY_PARAMETERS["height"], KEY_PARAMETERS["width"], 3],
@@ -47,7 +47,7 @@ with tf.name_scope('set-nn-variables'):
 
 # IMPORT images
 def split_dataset(ratio):
-    with tf.name_scope('Split_dataset'):
+    with tf.name_scope('split_dataset'):
         test_images = dict()
         train_images = dict()
         censored_files = os.listdir(
@@ -73,7 +73,7 @@ def split_dataset(ratio):
 
 
 def get_images(images_dict, batch_size=None):
-    with tf.name_scope('Get_images'):
+    with tf.name_scope('get_images'):
         images = []
         images_labels = []
 
@@ -110,7 +110,7 @@ def fix_image(image):
     Returns:
         image: An image as PIL.Image in specific size and in RGB
     """
-    with tf.name_scope('Fix_image'):
+    with tf.name_scope('fix_image'):
         required_size = KEY_PARAMETERS["required_size"]
         if image.mode != "RGB":
             image = image.convert("RGB")
@@ -120,7 +120,7 @@ def fix_image(image):
 
 
 def get_batch(images, y):
-    with tf.name_scope('Create_batch'):
+    with tf.name_scope('create_batch'):
         batch_x = np.asarray([np.asarray(
             image, dtype=np.float32) for image in images])
         batch_y = np.asarray(y)
@@ -164,19 +164,18 @@ def fully_connected(conv_layer, shape, w, b, name, do=1):
 
 # Create model
 def conv_net(x, weights, biases, dropout):
-    # Convolution Layer #1
-    with tf.name_scope('raw_image_layer'):
-        V = tf.slice(
-            x, (0, 0, 0, 0), (1, -1, -1, -1), name='slice_first_input'
+    with tf.name_scope('convolution_network'):
+        # Convolution Layer #1
+        with tf.name_scope('raw_image_layer'):
+            V = tf.slice(
+                x, (0, 0, 0, 0), (1, -1, -1, -1), name='slice_first_input'
+            )
+            tf.summary.image("raw_image", V)
+
+        conv1 = conv2d(
+            x, weights['wc1'], biases['bc1'], 'Convolution_1', strides=4
         )
-        tf.summary.image("raw_image", V)
 
-    conv1 = conv2d(
-        x, weights['wc1'], biases['bc1'], 'Convolution_1', strides=4
-    )
-    print(conv1.get_shape())
-
-    with tf.name_scope('convolution-1_visualization'):
         # Prepare for visualization
         # Take only convolutions of first image, discard convolutions
         # for other images.
@@ -191,11 +190,10 @@ def conv_net(x, weights, biases, dropout):
 
         tf.summary.image("conv_1_image", V, max_outputs=4)
 
-    conv2 = conv2d(
-        conv1, weights['wc2'], biases['bc2'], 'Convolution_2', strides=2
-    )
+        conv2 = conv2d(
+            conv1, weights['wc2'], biases['bc2'], 'Convolution_2', strides=2
+        )
 
-    with tf.name_scope('convolution_2_visualization'):
         # Prepare for visualization
         # Take only convolutions of first image, discard convolutions
         # for other images.
@@ -209,27 +207,25 @@ def conv_net(x, weights, biases, dropout):
         V = tf.reshape(V, (-1, 48, 64, 1))
 
         tf.summary.image("conv_2_image", V, max_outputs=6)
-    # Max Pooling (down-sampling)
-    conv2 = maxpool2d(conv2, 'Max_Pool_1', k=2)
-    print(conv2.get_shape())
-    # Convolution Layer #2
-    conv3 = conv2d(
-        conv2, weights['wc3'], biases['bc3'], 'Convolution_3', strides=2
-    )
-    print(conv3.get_shape())
-    conv4 = conv2d(conv3, weights['wc4'], biases['bc4'], 'Convolution_4')
-    # Max Pooling (down-sampling)
-    conv4 = maxpool2d(conv4, 'Max_Pool_2', k=2)
-    print(conv4.get_shape())
-    # Fully connected layer
-    # Reshape conv2 output to fit fully connected layer input
-    fc1 = fully_connected(
-        conv4, [-1, 2*2*96], weights['wd1'], biases['bd1'],
-        'Fully_connected', dropout
-    )
-    # Output, class prediction
-    with tf.name_scope('output'):
-        out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
+        # Max Pooling (down-sampling)
+        conv2 = maxpool2d(conv2, 'Max_Pool_1', k=2)
+        # Convolution Layer #2
+        conv3 = conv2d(
+            conv2, weights['wc3'], biases['bc3'], 'Convolution_3', strides=2
+        )
+        conv4 = conv2d(conv3, weights['wc4'], biases['bc4'], 'Convolution_4')
+        # Max Pooling (down-sampling)
+        conv4 = maxpool2d(conv4, 'Max_Pool_2', k=2)
+        # Fully connected layer
+        # Reshape conv2 output to fit fully connected layer input
+        fc1 = fully_connected(
+            conv4, [-1, 2*2*96], weights['wd1'], biases['bd1'],
+            'fully_connected', dropout
+        )
+        # Output, class prediction
+        with tf.name_scope('output'):
+            out = tf.matmul(fc1, weights['out'])
+            x = tf.nn.bias_add(out, biases['out'], name="Bias_Add")
     return out
 
 
@@ -269,31 +265,27 @@ with tf.name_scope('set_weigths_and_biases'):
 
 
 # Construct model
-with tf.name_scope('prediction'):
-    pred = conv_net(x, weights, biases, keep_prob)
+pred = conv_net(x, weights, biases, keep_prob)
 
 
 # Define loss and optimizer
-with tf.name_scope('cost'):
+with tf.name_scope('cost_calculation'):
     cost = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
         logits=pred, labels=y, name='cost')
     )
     tf.summary.scalar('cost', cost)
 
 
-with tf.name_scope('train'):
-    optimizer = tf.train.AdamOptimizer(
-        learning_rate=KEY_PARAMETERS["learning_rate"]
-    ).minimize(cost)
+optimizer = tf.train.AdamOptimizer(
+    learning_rate=KEY_PARAMETERS["learning_rate"]
+).minimize(cost)
 
 
 # Evaluate model
-with tf.name_scope('accuracy'):
-    with tf.name_scope('correct_prediction'):
-        correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
-    with tf.name_scope('accuracy'):
-        accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
-tf.summary.scalar('accuracy', accuracy)
+with tf.name_scope('accuracy_calculation'):
+    correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+    tf.summary.scalar('accuracy', accuracy)
 
 
 # Saver Class
@@ -301,9 +293,10 @@ saver = tf.train.Saver(max_to_keep=1)
 
 
 # Confusion matrix
-confusion = tf.confusion_matrix(
-    labels=tf.argmax(y, 1), predictions=tf.argmax(pred, 1), num_classes=2,
-)
+with tf.name_scope('confussion_matrix'):
+    confusion = tf.confusion_matrix(
+        labels=tf.argmax(y, 1), predictions=tf.argmax(pred, 1), num_classes=2,
+    )
 
 # Initializing the variables
 init = tf.global_variables_initializer()
