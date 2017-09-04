@@ -230,32 +230,32 @@ def conv_net(x, weights, biases, dropout):
 with tf.name_scope('set_weigths_and_biases'):
     weights = {
         # 24x32 conv, 3 input, 32 outputs
-        'wc1': tf.Variable(tf.random_normal([4, 4, 3, 24]), name='weight_1'),
+        'wc1': tf.Variable(tf.random_uniform([4, 4, 3, 24]), name='weight_1'),
         # 12x16 conv, 3 input, 32 outputs
-        'wc2': tf.Variable(tf.random_normal([2, 2, 24, 48]), name='weight_2'),
+        'wc2': tf.Variable(tf.random_uniform([2, 2, 24, 48]), name='weight_2'),
         # 3x4 conv, 32 inputs, 64 outputs
-        'wc3': tf.Variable(tf.random_normal([2, 2, 48, 96]), name='weight_3'),
+        'wc3': tf.Variable(tf.random_uniform([2, 2, 48, 96]), name='weight_3'),
         # 2x2 conv, 64 inputs, 128 outputs
-        'wc4': tf.Variable(tf.random_normal([1, 1, 96, 96]), name='weight_4'),
+        'wc4': tf.Variable(tf.random_uniform([1, 1, 96, 96]), name='weight_4'),
         # fully connected, 24*32*128 inputs, 1024 outputs
         'wd1': tf.Variable(
-            tf.random_normal([2*2*96, 768]), name='weight_fc'
+            tf.random_uniform([2*2*96, 768]), name='weight_fc'
         ),
         # 1024 inputs, 2 outputs (class prediction)
         'out': tf.Variable(
-            tf.random_normal([768, KEY_PARAMETERS["n_classes"]]),
+            tf.random_uniform([768, KEY_PARAMETERS["n_classes"]]),
             name='weight_out'
         )
     }
 
     biases = {
-        'bc1': tf.Variable(tf.random_normal([24]), name='bias_1'),
-        'bc2': tf.Variable(tf.random_normal([48]), name='bias_2'),
-        'bc3': tf.Variable(tf.random_normal([96]), name='bias_3'),
-        'bc4': tf.Variable(tf.random_normal([96]), name='bias_4'),
-        'bd1': tf.Variable(tf.random_normal([768]), name='bias_fc'),
+        'bc1': tf.Variable(tf.random_uniform([24]), name='bias_1'),
+        'bc2': tf.Variable(tf.random_uniform([48]), name='bias_2'),
+        'bc3': tf.Variable(tf.random_uniform([96]), name='bias_3'),
+        'bc4': tf.Variable(tf.random_uniform([96]), name='bias_4'),
+        'bd1': tf.Variable(tf.random_uniform([768]), name='bias_fc'),
         'out': tf.Variable(
-            tf.random_normal([KEY_PARAMETERS["n_classes"]]),
+            tf.random_uniform([KEY_PARAMETERS["n_classes"]]),
             name='bias_out'
         )
     }
