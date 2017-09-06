@@ -2,6 +2,7 @@
 input
 output
 other_files
+final_output
 .idea
 .DS_STORE
 # Ignore Saved Models folder
