@@ -10,4 +10,4 @@ Authors:
 
 
 To run the code you need to have `tensorflow` & `numpy` libraries installed. Then you need to type `python main.py`.
-The images in input are just a small sample which has been during development.
+The images inside the input directory are just a small sample which has been during development.
